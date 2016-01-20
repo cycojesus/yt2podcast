@@ -4,12 +4,31 @@ require 'json'
 require 'open-uri'
 require 'rss'
 
-require 'bundler'
-Bundler.require( :default ) # require tout les gems définis dans Gemfile
+require 'youtube-dl.rb'
+require 'taglib'
 
 configuration  = JSON.parse( File.read( './yt2rss.json' ) ) if File.exist?( './yt2rss.json' )
 configuration  = JSON.parse( File.read( '/etc/yt2rss.json' ) ) if configuration.nil? && File.exist?( '/etc/yt2rss.json' )
 exit if configuration.nil?
+
+def youtubedl( url, output_file, mp3_file )
+  YoutubeDL.get( url,
+                 output: output_file,
+                 extract_audio: true,
+                 audio_format: 'mp3',
+                 audio_quality: 0 ) unless File.exist? mp3_file
+end
+
+def tag( entry, filename )
+  TagLib::FileRef.open( filename ) do |file|
+    tag = file.tag
+    
+    tag.artist = entry.author.name.content
+    tag.title = entry.title.content
+    
+    file.save
+  end
+end
 
 ARGV.each do |user|
   p user
@@ -17,37 +36,24 @@ ARGV.each do |user|
   dl_dir = "#{feed_dir}/medias"
   FileUtils.mkdir_p( dl_dir ) unless Dir.exist?( dl_dir )
   
+  user_feed = RSS::Parser.parse( open( "https://www.youtube.com/feeds/videos.xml?user=#{user}" ), false )
+  user_feed.entries
+           .each do |entry| 
+    video_id = entry.link.href.gsub( 'http://www.youtube.com/watch?v=', '' )
+    output_file = "#{dl_dir}/#{video_id}.tmp"
+    mp3_file = "#{dl_dir}/#{video_id}.mp3"
+    p video_id
+      
+    youtubedl( entry.link.href, output_file, mp3_file )
+    
+    tag( entry, mp3_file )
+    
+    entry.link.href = "#{configuration['root_url']}/#{user}/medias/#{video_id}.mp3"
+  end
+  
+  user_feed.updated = Time.now
+
   File.open( "#{feed_dir}/feed.xml", 'w' ) do |feed_file| 
-    feed_file.write( RSS::Maker.make( 'atom' ) do |new_rss| 
-                       open( "https://www.youtube.com/feeds/videos.xml?user=#{user}" ) do |rss| 
-                         yt_rss = RSS::Parser.parse( rss, false )
-                         
-                         new_rss.channel.author = yt_rss.author.name.content
-                         new_rss.channel.link = yt_rss.author.uri.content
-                         new_rss.channel.updated = DateTime.now
-                         new_rss.channel.about = new_rss.channel.link
-                         new_rss.channel.title = yt_rss.title.content
-                         new_rss.channel.id = yt_rss.id.content
-                         
-                         yt_rss.entries
-                               .each do |entry| 
-                           video_id = entry.link.href.gsub( 'http://www.youtube.com/watch?v=', '' )
-                           output_file = "#{dl_dir}/#{video_id}.#{configuration['file_ext']}"
-                           p video_id
-                           
-                           YoutubeDL.get( entry.link.href,
-                                          output: output_file,
-                                          extract_audio: true,
-                                          audio_format: 'mp3',
-                                          audio_quality: 0 ) unless File.exist? output_file
-                           
-                           new_rss.items.new_item do |item|
-                             item.link = "#{configuration['root_url']}/#{user}/medias/#{video_id}.#{configuration['file_ext']}"
-                             item.title = entry.title
-                             item.updated = entry.updated
-                           end
-                         end
-                       end
-                     end )
+    feed_file.write( user_feed.to_atom( 'feed' ).to_s )
   end
 end
