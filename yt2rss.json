@@ -1,4 +1,4 @@
 {
-    "root_url": "http://le-moine.org/yt2rss/feeds",
-    "download_root_path": "/home/cycojesus/www/yt2rss/feeds"
+    "root_url": "http://your.host/feeds",
+    "download_root_path": "/file/path/feeds"
 }
