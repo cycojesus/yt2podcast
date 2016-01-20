@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 
+require 'fileutils'
 require 'json'
 require 'open-uri'
 require 'rss'
