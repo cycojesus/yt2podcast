@@ -8,8 +8,8 @@ require 'rss'
 require 'youtube-dl.rb'
 require 'taglib'
 
-configuration  = JSON.parse( File.read( './yt2rss.json' ) ) if File.exist?( './yt2rss.json' )
-configuration  = JSON.parse( File.read( '/etc/yt2rss.json' ) ) if configuration.nil? && File.exist?( '/etc/yt2rss.json' )
+configuration  = JSON.parse( File.read( './yt2podcast.json' ) ) if File.exist?( './yt2podcast.json' )
+configuration  = JSON.parse( File.read( '/etc/yt2podcast.json' ) ) if configuration.nil? && File.exist?( '/etc/yt2podcast.json' )
 exit if configuration.nil?
 
 def youtubedl( url, output_file, mp3_file )
