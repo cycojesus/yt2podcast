@@ -31,8 +31,8 @@ def tag( entry, filename )
   end
 end
 
-ARGV.each do |user|
-  p user
+def convert_feed( user )
+  STDOUT.puts user
   feed_dir = "#{configuration[ 'download_root_path' ]}/#{user}"
   dl_dir = "#{feed_dir}/medias"
   FileUtils.mkdir_p( dl_dir ) unless Dir.exist?( dl_dir )
@@ -43,8 +43,8 @@ ARGV.each do |user|
     video_id = entry.link.href.gsub( 'http://www.youtube.com/watch?v=', '' )
     output_file = "#{dl_dir}/#{video_id}.tmp"
     mp3_file = "#{dl_dir}/#{video_id}.mp3"
-    p video_id
-      
+    STDOUT.puts video_id
+    
     youtubedl( entry.link.href, output_file, mp3_file )
     
     tag( entry, mp3_file )
@@ -53,8 +53,12 @@ ARGV.each do |user|
   end
   
   user_feed.updated = Time.now
-
+  
   File.open( "#{feed_dir}/feed.xml", 'w' ) do |feed_file| 
     feed_file.write( user_feed.to_atom( 'feed' ).to_s )
   end
+end
+
+ARGV.each do |user|
+  convert_feed( user )
 end
