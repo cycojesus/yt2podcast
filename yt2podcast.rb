@@ -31,13 +31,13 @@ def tag( entry, filename )
   end
 end
 
-def convert_feed( user )
+def convert_feed( url )
   STDOUT.puts user
   feed_dir = "#{configuration[ 'download_root_path' ]}/#{user}"
   dl_dir = "#{feed_dir}/medias"
   FileUtils.mkdir_p( dl_dir ) unless Dir.exist?( dl_dir )
   
-  user_feed = RSS::Parser.parse( open( "https://www.youtube.com/feeds/videos.xml?user=#{user}" ), false )
+  user_feed = RSS::Parser.parse( open( url ), false )
   user_feed.entries
            .each do |entry| 
     video_id = entry.link.href.gsub( 'http://www.youtube.com/watch?v=', '' )
@@ -60,5 +60,5 @@ def convert_feed( user )
 end
 
 ARGV.each do |user|
-  convert_feed( user )
+  convert_feed( "https://www.youtube.com/feeds/videos.xml?user=#{user}" )
 end
