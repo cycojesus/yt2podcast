@@ -8,9 +8,9 @@ require 'rss'
 require 'youtube-dl.rb'
 require 'taglib'
 
-configuration  = JSON.parse( File.read( './yt2podcast.json' ) ) if File.exist?( './yt2podcast.json' )
-configuration  = JSON.parse( File.read( '/etc/yt2podcast.json' ) ) if configuration.nil? && File.exist?( '/etc/yt2podcast.json' )
-exit if configuration.nil?
+OPTIONS = JSON.parse( File.read( './yt2podcast.json' ) ) if File.exist?( './yt2podcast.json' )
+OPTIONS = JSON.parse( File.read( '/etc/yt2podcast.json' ) ) if OPTIONS.nil? && File.exist?( '/etc/yt2podcast.json' )
+exit if OPTIONS.nil?
 
 def youtubedl( url, output_file, mp3_file )
   YoutubeDL.get( url,
@@ -32,14 +32,16 @@ def tag( entry, filename )
 end
 
 def convert_feed( url )
-  STDOUT.puts user
-  feed_dir = "#{configuration[ 'download_root_path' ]}/#{user}"
+  feed = RSS::Parser.parse( open( url ), false )
+  
+  name = feed.author.name.content
+  
+  feed_dir = "#{OPTIONS[ 'download_root_path' ]}/#{name.tr( ' ', '_' )}"
   dl_dir = "#{feed_dir}/medias"
   FileUtils.mkdir_p( dl_dir ) unless Dir.exist?( dl_dir )
   
-  user_feed = RSS::Parser.parse( open( url ), false )
-  user_feed.entries
-           .each do |entry| 
+  feed.entries
+      .each do |entry| 
     video_id = entry.link.href.gsub( 'http://www.youtube.com/watch?v=', '' )
     output_file = "#{dl_dir}/#{video_id}.tmp"
     mp3_file = "#{dl_dir}/#{video_id}.mp3"
@@ -49,16 +51,16 @@ def convert_feed( url )
     
     tag( entry, mp3_file )
     
-    entry.link.href = "#{configuration['root_url']}/#{user}/medias/#{video_id}.mp3"
+    entry.link.href = "#{OPTIONS['root_url']}/#{name}/medias/#{video_id}.mp3"
   end
   
-  user_feed.updated = Time.now
+  feed.updated = Time.now
   
   File.open( "#{feed_dir}/feed.xml", 'w' ) do |feed_file| 
-    feed_file.write( user_feed.to_atom( 'feed' ).to_s )
+    feed_file.write( feed.to_atom( 'feed' ).to_s )
   end
 end
 
-ARGV.each do |user|
-  convert_feed( "https://www.youtube.com/feeds/videos.xml?user=#{user}" )
+ARGV.each do |feed_url|
+  convert_feed( feed_url )
 end
