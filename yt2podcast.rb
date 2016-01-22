@@ -12,12 +12,16 @@ OPTIONS = JSON.parse( File.read( './yt2podcast.json' ) ) if File.exist?( './yt2p
 OPTIONS = JSON.parse( File.read( '/etc/yt2podcast.json' ) ) if OPTIONS.nil? && File.exist?( '/etc/yt2podcast.json' )
 exit if OPTIONS.nil?
 
-def youtubedl( url, output_file, mp3_file )
-  YoutubeDL.get( url,
-                 output: output_file,
-                 extract_audio: true,
-                 audio_format: 'mp3',
-                 audio_quality: 0 ) unless File.exist? mp3_file
+def youtubedl( url, output_file, ogg_file )
+  begin
+    YoutubeDL.get( url,
+                   output: output_file,
+                   extract_audio: true,
+                   audio_format: 'vorbis',
+                   audio_quality: 0 ) unless File.exist? ogg_file
+  rescue
+    STDERR.puts "Couldn't retrieve video #{url}"
+  end
 end
 
 def tag( entry, filename )
@@ -35,6 +39,7 @@ def convert_feed( url )
   feed = RSS::Parser.parse( open( url ), false )
   
   name = feed.author.name.content
+  STDOUT.puts name
   
   feed_dir = "#{OPTIONS[ 'download_root_path' ]}/#{name.tr( ' ', '_' )}"
   dl_dir = "#{feed_dir}/medias"
@@ -44,14 +49,16 @@ def convert_feed( url )
       .each do |entry| 
     video_id = entry.link.href.gsub( 'http://www.youtube.com/watch?v=', '' )
     output_file = "#{dl_dir}/#{video_id}.tmp"
-    mp3_file = "#{dl_dir}/#{video_id}.mp3"
-    STDOUT.puts video_id
+    ogg_file = "#{dl_dir}/#{video_id}.ogg"
+    STDOUT.puts " 🠖 #{video_id}"
     
-    youtubedl( entry.link.href, output_file, mp3_file )
+    youtubedl( entry.link.href, output_file, ogg_file )
     
-    tag( entry, mp3_file )
-    
-    entry.link.href = "#{OPTIONS['root_url']}/#{name}/medias/#{video_id}.mp3"
+    if File.exist?( ogg_file )
+      tag( entry, ogg_file )
+      
+      entry.link.href = "#{OPTIONS['root_url']}/#{name}/medias/#{video_id}.ogg"
+    end
   end
   
   feed.updated = Time.now
