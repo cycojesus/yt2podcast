@@ -10,16 +10,16 @@ require 'rss'
 require 'youtube-dl.rb'
 require 'taglib'
 
-config = { 'root_url': 'http://yt2podcast.le-moine.org/',
-           'download_root_path': '/home/cycojesus/www/yt2podcast/feeds' }
+CONFIG = { root_url: 'http://yt2podcast.le-moine.org',
+           download_root_path: './feeds' }
 
-def youtubedl( url, output_file, ogg_file )
+def youtubedl( url, output_file, downloaded_file )
   begin
     YoutubeDL.get( url,
                    output: output_file,
                    extract_audio: true,
                    audio_format: 'vorbis',
-                   audio_quality: 0 ) unless File.exist? ogg_file
+                   audio_quality: 0 ) unless File.exist? downloaded_file
   rescue
     STDERR.puts "Couldn't retrieve video #{url}"
   end
@@ -42,7 +42,7 @@ def convert_feed( url, config )
   name = feed.author.name.content
   STDOUT.puts name
   
-  feed_dir = "#{config[ 'download_root_path' ]}/#{name.tr( ' ', '_' )}"
+  feed_dir = "#{config[ :download_root_path ]}/#{name.tr( ' ', '_' )}"
   dl_dir = "#{feed_dir}/medias"
   FileUtils.mkdir_p( dl_dir ) unless Dir.exist?( dl_dir )
   
@@ -50,15 +50,15 @@ def convert_feed( url, config )
       .each do |entry| 
     video_id = entry.link.href.gsub( 'http://www.youtube.com/watch?v=', '' )
     output_file = "#{dl_dir}/#{video_id}.tmp"
-    ogg_file = "#{dl_dir}/#{video_id}.ogg"
-    STDOUT.puts " 🠖 #{video_id}"
+    downloaded_file = "#{dl_dir}/#{video_id}.ogg"
+    STDOUT.puts "  🠖 #{video_id}"
     
-    youtubedl( entry.link.href, output_file, ogg_file )
+    youtubedl( entry.link.href, output_file, downloaded_file )
     
-    if File.exist?( ogg_file )
-      tag( entry, ogg_file )
-      
-      entry.link.href = "#{config['root_url']}/#{name}/medias/#{video_id}.ogg"
+    if File.exist?( downloaded_file )
+      tag( entry, downloaded_file )
+
+      entry.link.href = "#{config[ :root_url ]}/#{name}/medias/#{video_id}.ogg"
     end
   end
   
@@ -83,10 +83,9 @@ end
 feeds = []
 ARGV.options do |opts|
   #/ Usage: <progname> [options]...
-  #/ How does this script make my life easier?
-  opts.on( '-u', '--url=val', String ) { |val| config['root_url'] = val }
+  opts.on( '-u', '--url=val', String ) { |val| CONFIG[ :root_url ] = val }
   #/     -u <url> | --url=<url> : root url used in generated RSS
-  opts.on( '-o', '--output-dir=val', String ) { |val| config['download_root_path'] = val }
+  opts.on( '-o', '--output-dir=val', String ) { |val| CONFIG[ :download_root_path ] = val }
   #/     -o <path> | --output-dir=<path> : directory where files are stored
   opts.on( '-i', '--input=val', String ) { |val| feeds << val }
   #/     -i <url> | --input=<url> : url of youtube feed
@@ -102,5 +101,5 @@ ARGV.options do |opts|
 end
 
 feeds.each do |feed|
-  convert_feed( feed, config )
+  convert_feed( feed, CONFIG )
 end
