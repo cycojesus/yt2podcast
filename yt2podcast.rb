@@ -4,6 +4,7 @@
 require 'fileutils'
 require 'open-uri'
 require 'optparse'
+require 'rexml/document'
 require 'rss'
 
 require 'youtube-dl.rb'
@@ -68,8 +69,18 @@ def convert_feed( url, config )
   end
 end
 
+def parse_opml( opml_node, parent_names=[] )
+  feeds = []
+  opml_node.elements.each('outline') do |el|
+    feeds << parse_opml( el, parent_names + [ el.attributes['text'] ] ) if el.elements.size != 0
+    
+    feeds << el.attributes['xmlUrl'] if el.attributes['xmlUrl']
+  end
+
+  feeds.flatten
+end
+
 feeds = []
-# opml = nil
 ARGV.options do |opts|
   #/ Usage: <progname> [options]...
   #/ How does this script make my life easier?
@@ -79,8 +90,11 @@ ARGV.options do |opts|
   #/     -o <path> | --output-dir=<path> : directory where files are stored
   opts.on( '-i', '--input=val', String ) { |val| feeds << val }
   #/     -i <url> | --input=<url> : url of youtube feed
-  # opts.on( '-g', '--opml=val', String ) { |val| opml = val }
-  # #/     -g <filepath> | --opml=<filepath> : path of opml file
+  opts.on( '-g', '--opml=val', String ) { |val|
+    feeds.concat( parse_opml( REXML::Document.new( File.read( val ) ).elements['opml/body'] ) )
+    feeds.flatten
+  }
+  #/     -g <filepath> | --opml=<filepath> : path of opml file
   
   opts.on_tail( '-h', '--help' ) { exec "grep '^  #/' < '#{__FILE__}'|cut -c6-" }
   #/     -h | --help : this
