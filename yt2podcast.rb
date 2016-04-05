@@ -93,7 +93,7 @@ ARGV.options do |opts|
   opts.on( '-o', '--output-dir=val', String ) { |val| CONFIG[ :download_root_path ] = val }
   #/     -o <path> | --output-dir=<path> : directory where files are stored
   opts.on( '-f', '--feed' ) { CONFIG[ :generate_feed ] = true }
-  #/     -g | --feed : enable generation of RSS feed (default: false)
+  #/     -f | --feed : enable generation of RSS feed (default: false)
   opts.on( '-u', '--url=val', String ) { |val| CONFIG[ :root_url ] = val }
   #/     -u <url> | --url=<url> : root url used in generated RSS
 
